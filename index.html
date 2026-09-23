@@ -1,0 +1,1490 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BuildControl Pro — Şantiye Yönetim Sistemi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800;900&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{
+    /* Endüstriyel palet: çelik + beton + emniyet turuncusu */
+    --steel-900:#221F1B;
+    --steel-800:#2C2823;
+    --steel-700:#3A342C;
+    --orange-600:#FF5A1F;
+    --orange-500:#FF7A45;
+    --orange-50:#FFF0E8;
+    --amber-500:#F0A824;
+    --amber-50:#FEF3E0;
+    --green-600:#3F8F5B;
+    --green-50:#E9F5EC;
+    --rust-600:#C1432B;
+    --rust-50:#FBEAE6;
+    --concrete-100:#EFEBE3;
+    --concrete-50:#F7F4EE;
+    --card:#FDFBF7;
+    --ink-900:#221F1B;
+    --ink-600:#5C5548;
+    --ink-400:#948C7C;
+    --border:#DCD5C7;
+    --border-strong:#C7BEAB;
+    --shadow:drop-shadow(0 1px 2px rgba(34,31,27,.05)) drop-shadow(0 6px 16px rgba(34,31,27,.06));
+    --notch:16px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    font-family:'IBM Plex Sans',system-ui,sans-serif;
+    background:var(--concrete-100);
+    background-image: radial-gradient(circle at 1px 1px, rgba(34,31,27,.05) 1px, transparent 0);
+    background-size:22px 22px;
+    color:var(--ink-900);
+    display:flex;
+    min-height:100vh;
+    font-size:14px;
+  }
+  ::selection{background:var(--orange-600); color:#fff;}
+  .mono{font-family:'IBM Plex Mono', monospace; letter-spacing:-0.01em;}
+  .stencil{font-family:'Big Shoulders Display', sans-serif; text-transform:uppercase;}
+ 
+  /* ---------- Sidebar ---------- */
+  .sidebar{
+    width:264px; flex-shrink:0;
+    background:linear-gradient(180deg, var(--steel-900), var(--steel-800));
+    color:#CEC6B8; display:flex; flex-direction:column;
+    height:100vh; position:sticky; top:0;
+  }
+  .hazard-strip{
+    height:5px; width:100%; flex-shrink:0;
+    background:repeating-linear-gradient(-45deg, var(--orange-600) 0 10px, #191612 10px 20px);
+  }
+  .brand{
+    display:flex; align-items:center; gap:12px;
+    padding:22px 20px 20px; border-bottom:1px solid rgba(255,255,255,.07);
+  }
+  .brand-mark{
+    width:42px; height:42px; flex-shrink:0;
+    background:var(--orange-600); color:#1A1712;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Big Shoulders Display'; font-weight:800; font-size:19px;
+    clip-path:polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%);
+  }
+  .brand-text .name{font-family:'Big Shoulders Display'; font-weight:800; font-size:19px; color:#fff; letter-spacing:.01em; line-height:1;}
+  .brand-text .sub{font-size:10.5px; color:#8C8272; margin-top:4px; letter-spacing:.06em; text-transform:uppercase; font-weight:600;}
+ 
+  .nav{flex:1; overflow-y:auto; padding:16px 12px;}
+  .nav::-webkit-scrollbar{width:5px;}
+  .nav::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12); border-radius:10px;}
+  .nav-item{
+    display:flex; align-items:center; gap:11px;
+    padding:10px 12px; color:#A99F8C; font-size:13px; font-weight:500;
+    cursor:pointer; margin-bottom:2px; position:relative; white-space:nowrap;
+    border-left:3px solid transparent;
+  }
+  .nav-item svg{width:17px; height:17px; flex-shrink:0; opacity:.8;}
+  .nav-item:hover{background:rgba(255,255,255,.05); color:#fff;}
+  .nav-item.active{background:rgba(255,90,31,.14); color:#fff; border-left-color:var(--orange-600);}
+  .nav-item .chev{margin-left:auto; width:12px; height:12px; opacity:.5;}
+ 
+  .sidebar-user{padding:16px 18px; border-top:1px solid rgba(255,255,255,.07); display:flex; align-items:center; gap:10px;}
+  .avatar{
+    width:34px; height:34px; flex-shrink:0; background:var(--orange-600); color:#1A1712;
+    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13px;
+    clip-path:polygon(0 0, calc(100% - 7px) 0, 100% 7px, 100% 100%, 0 100%);
+  }
+  .sidebar-user .uname{font-size:13px; font-weight:700; color:#fff;}
+  .sidebar-user .urole{font-size:10.5px; color:#8C8272; text-transform:uppercase; letter-spacing:.04em; font-weight:600;}
+ 
+  /* ---------- Main ---------- */
+  .main{flex:1; min-width:0; display:flex; flex-direction:column;}
+  .topbar{
+    height:66px; flex-shrink:0; background:var(--card);
+    border-bottom:1px solid var(--border);
+    display:flex; align-items:center; justify-content:space-between;
+    padding:0 26px; position:sticky; top:0; z-index:20;
+  }
+  .project-select{
+    display:flex; align-items:center; gap:10px;
+    border:1.5px solid var(--border-strong); padding:8px 14px;
+    font-size:12.5px; font-weight:600; color:var(--ink-600);
+    background:var(--concrete-50); clip-path:polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 0 100%);
+  }
+  .project-select .label{color:var(--ink-400); text-transform:uppercase; font-size:10.5px; letter-spacing:.05em;}
+  .project-select select{border:none; background:transparent; font:inherit; font-weight:700; color:var(--ink-900); cursor:pointer; outline:none;}
+ 
+  .topbar-right{display:flex; align-items:center; gap:16px;}
+  .btn-action{
+    background:var(--orange-600); color:#fff; font-family:'Big Shoulders Display'; font-weight:800;
+    font-size:16px; text-transform:uppercase; letter-spacing:.04em; border:none; padding:9px 18px;
+    cursor:pointer; clip-path:polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
+    box-shadow: 0 4px 12px rgba(255,90,31,0.3);
+    transition:transform .15s, background .15s;
+  }
+  .btn-action:hover{background:var(--orange-500); transform:translateY(-1px);}
+
+  .icon-btn{position:relative; width:38px; height:38px; display:flex; align-items:center; justify-content:center; color:var(--ink-600); cursor:pointer;}
+  .icon-btn:hover{background:var(--concrete-50);}
+  .icon-btn svg{width:19px; height:19px;}
+  .badge{
+    position:absolute; top:3px; right:3px; min-width:16px; height:16px; padding:0 4px;
+    background:var(--orange-600); color:#fff; font-size:9.5px; font-weight:700;
+    display:flex; align-items:center; justify-content:center;
+    clip-path:polygon(0 0, calc(100% - 4px) 0, 100% 4px, 100% 100%, 0 100%);
+  }
+  .topbar-user{display:flex; align-items:center; gap:9px; padding-left:16px; border-left:1px solid var(--border); cursor:pointer;}
+  .topbar-user .tname{font-size:12.5px; font-weight:700; color:var(--ink-900);}
+  .topbar-user .tco{font-size:10.5px; color:var(--ink-400); text-transform:uppercase; letter-spacing:.04em;}
+ 
+  .content{padding:26px; flex:1; overflow-y:auto;}
+ 
+  /* ---------- KPI cards ---------- */
+  .kpi-grid{display:grid; grid-template-columns:repeat(6,1fr); gap:14px; margin-bottom:22px;}
+  .kpi-card{
+    background:var(--card); border:1px solid var(--border);
+    padding:16px 16px 14px; filter:var(--shadow);
+    clip-path:polygon(0 0, calc(100% - var(--notch)) 0, 100% var(--notch), 100% 100%, 0 100%);
+    display:flex; flex-direction:column; gap:9px; position:relative; cursor:pointer;
+    transition:transform .15s ease;
+  }
+  .kpi-card:hover{transform:translateY(-2px);}
+  .kpi-card::after{
+    content:""; position:absolute; top:6px; right:6px; width:4px; height:4px; border-radius:50%;
+    background:var(--border-strong);
+  }
+  .kpi-eyebrow{font-size:10.5px; font-weight:700; color:var(--ink-400); text-transform:uppercase; letter-spacing:.05em;}
+  .kpi-value{font-family:'IBM Plex Mono',monospace; font-size:22px; font-weight:700; color:var(--ink-900); letter-spacing:-.02em;}
+  .kpi-sub{font-size:11px; font-weight:600; color:var(--accent,var(--orange-600));}
+
+  /* Belirgin Vurgulu Paneller */
+  .prominent-panel {
+    background: #FFFDF9;
+    border: 2px solid var(--orange-600);
+    filter: drop-shadow(0 4px 16px rgba(255,90,31,0.12));
+    clip-path: polygon(0 0, calc(100% - 22px) 0, 100% 22px, 100% 100%, 0 100%);
+    margin-bottom: 22px;
+    position: relative;
+  }
+  .prominent-head {
+    background: var(--steel-900);
+    color: #fff;
+    padding: 14px 22px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .prominent-title {
+    font-family: 'Big Shoulders Display';
+    font-size: 19px;
+    font-weight: 800;
+    letter-spacing: .03em;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .new-tag-pulse {
+    background: var(--orange-600);
+    color: #fff;
+    font-family: 'IBM Plex Mono';
+    font-size: 10px;
+    font-weight: 800;
+    padding: 2px 8px;
+    clip-path: polygon(0 0, calc(100% - 4px) 0, 100% 4px, 100% 100%, 0 100%);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0% { opacity: 0.8; } 50% { opacity: 1; } 100% { opacity: 0.8; } }
+
+  /* ---------- Panels ---------- */
+  .row{display:grid; gap:16px; margin-bottom:16px;}
+  .row-3{grid-template-columns:1fr 1.6fr 1fr;}
+  .row-2{grid-template-columns:1.55fr 1fr;}
+  .panel{
+    background:var(--card); border:1px solid var(--border); filter:var(--shadow);
+    clip-path:polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 0 100%);
+    display:flex; flex-direction:column; position:relative;
+  }
+  .panel::after{content:"";position:absolute; top:8px; right:8px; width:5px; height:5px; border-radius:50%; background:var(--border-strong);}
+  .panel-head{display:flex; align-items:center; justify-content:space-between; padding:18px 22px 4px;}
+  .panel-title{font-family:'Big Shoulders Display'; font-weight:700; font-size:17px; text-transform:uppercase; letter-spacing:.02em; color:var(--ink-900);}
+  .panel-link{font-size:11.5px; font-weight:700; color:var(--orange-600); cursor:pointer; text-transform:uppercase; letter-spacing:.03em;}
+  .panel-body{padding:0 22px 20px;}
+ 
+  .dimline{position:relative; height:1px; background:var(--border); margin:10px 22px 16px;}
+  .dimline::before,.dimline::after{content:""; position:absolute; top:-4px; width:1px; height:9px; background:var(--border-strong);}
+  .dimline::before{left:0;} .dimline::after{right:0;}
+  .dimline .dimtag{
+    position:absolute; top:-8px; left:22px; background:var(--card); padding:0 8px;
+    font-family:'IBM Plex Mono'; font-size:9.5px; color:var(--ink-400); letter-spacing:.04em;
+  }
+ 
+  .donut-wrap{position:relative; display:flex; align-items:center; justify-content:center; padding:6px 0;}
+  .donut-center{position:absolute; text-align:center;}
+  .donut-center .big{font-family:'IBM Plex Mono'; font-size:22px; font-weight:700; color:var(--ink-900);}
+  .donut-center .small{font-size:10px; color:var(--ink-400); font-weight:600; text-transform:uppercase; letter-spacing:.04em; margin-top:2px;}
+  .legend{display:flex; flex-direction:column; gap:9px; justify-content:center;}
+  .legend-row{display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--ink-600); font-weight:500;}
+  .dot{width:9px; height:9px; flex-shrink:0;}
+  .legend-row b{margin-left:auto; font-family:'IBM Plex Mono'; color:var(--ink-900);}
+  .donut-flex{display:flex; align-items:center; gap:20px;}
+ 
+  .gantt-toolbar{display:flex; align-items:center; gap:8px;}
+  .pill{font-family:'IBM Plex Mono'; font-size:10.5px; font-weight:700; padding:5px 11px; background:var(--steel-900); color:#fff; cursor:pointer; user-select:none;}
+  .pill-outline{background:var(--concrete-50); border:1px solid var(--border-strong); color:var(--ink-600); font-weight:600;}
+  .gantt{display:flex; flex-direction:column; gap:2px;}
+  .gantt-row{display:grid; grid-template-columns:132px 1fr; align-items:center; height:29px;}
+  .gantt-label{font-size:11.5px; font-weight:600; color:var(--ink-600); padding-right:8px;}
+  .gantt-track{position:relative; height:100%; display:flex; align-items:center;}
+  .gantt-bar{height:10px; position:absolute; border-radius:2px; transition:all .2s ease;}
+  .today-line{position:absolute; top:-6px; bottom:-6px; width:2px; background:var(--orange-600); left:38%;}
+  .today-tag{position:absolute; top:-25px; left:38%; transform:translateX(-50%); background:var(--orange-600); color:#fff; font-size:9.5px; font-weight:700; padding:2px 9px; font-family:'IBM Plex Mono';}
+ 
+  table{width:100%; border-collapse:collapse; font-size:12.5px;}
+  th{text-align:left; font-size:10.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-400); font-weight:700; padding:8px 10px; border-bottom:1.5px solid var(--border-strong);}
+  td{padding:9px 10px; border-bottom:1px solid var(--concrete-50); color:var(--ink-600); font-weight:500;}
+  tr:last-child td{border-bottom:none;}
+  .mono-cell{font-family:'IBM Plex Mono'; font-weight:600; color:var(--ink-900);}
+  .tag{display:inline-flex; align-items:center; gap:4px; font-size:10.5px; font-weight:700; padding:3px 10px; text-transform:uppercase; letter-spacing:.03em;}
+  .tag-ok{background:var(--green-50); color:var(--green-600);}
+  .tag-fix{background:var(--amber-50); color:var(--amber-500);}
+  .tag-bad{background:var(--rust-50); color:var(--rust-600);}
+ 
+  .report-item{display:flex; gap:12px; padding:12px 0; border-bottom:1px solid var(--concrete-50);}
+  .report-item:last-child{border-bottom:none; padding-bottom:0;}
+  .report-thumb{
+    width:52px; height:52px; flex-shrink:0; border:1px solid var(--border);
+    background:repeating-linear-gradient(45deg, var(--concrete-50) 0 6px, #EDE6D8 6px 12px);
+    display:flex; align-items:center; justify-content:center; color:var(--orange-600);
+    clip-path:polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
+  }
+  .report-thumb svg{width:22px; height:22px;}
+  .report-date{font-size:12.5px; font-weight:700; color:var(--ink-900); font-family:'IBM Plex Mono';}
+  .report-desc{font-size:12px; color:var(--ink-400); margin-top:2px;}
+  .check-ok{margin-left:auto; color:var(--green-600); flex-shrink:0;}
+ 
+  .audit-item{display:flex; align-items:center; gap:11px; padding:11px 0; border-bottom:1px solid var(--concrete-50);}
+  .audit-item:last-child{border-bottom:none;}
+  .audit-icon{width:34px; height:34px; flex-shrink:0; display:flex; align-items:center; justify-content:center; clip-path:polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%);}
+  .audit-title{font-size:12.5px; font-weight:700; color:var(--ink-900);}
+  .audit-date{font-size:11px; color:var(--ink-400); font-family:'IBM Plex Mono'; margin-top:1px;}
+ 
+  .equip-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:14px;}
+  .equip-card{
+    border:1px solid var(--border); padding:15px; text-align:center;
+    display:flex; flex-direction:column; align-items:center; gap:8px;
+    clip-path:polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%);
+    background:var(--card); cursor:pointer; transition:transform .15s, border-color .15s;
+  }
+  .equip-card:hover{ transform:translateY(-3px); border-color:var(--orange-600); box-shadow:0 6px 16px rgba(255,90,31,0.15); }
+  .equip-icon{width:50px; height:50px; background:var(--concrete-50); display:flex; align-items:center; justify-content:center; color:var(--steel-900);}
+  .equip-icon svg{width:25px; height:25px;}
+  .equip-name{font-size:12px; font-weight:700; color:var(--ink-900);}
+  .equip-status{font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.03em;}
+  .status-run{color:var(--green-600);}
+  .status-maint{color:var(--amber-500);}
+  .equip-hours{font-size:10.5px; color:var(--ink-400); font-family:'IBM Plex Mono';}
+
+  /* Modals */
+  .modal-overlay{
+    position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(34,31,27,.75);
+    backdrop-filter:blur(3px); display:flex; align-items:center; justify-content:center;
+    z-index:100; padding:20px;
+  }
+  .modal-box{
+    background:var(--card); border:2px solid var(--border-strong); width:100%; max-width:680px;
+    clip-path:polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 0 100%);
+    box-shadow:0 20px 50px rgba(0,0,0,.3); display:flex; flex-direction:column;
+  }
+  .modal-header{
+    background:var(--steel-900); color:#fff; padding:16px 20px; display:flex; align-items:center; justify-content:space-between;
+    font-family:'Big Shoulders Display'; font-size:18px; font-weight:800; letter-spacing:.03em;
+  }
+  .modal-body{padding:20px; overflow-y:auto; max-height:80vh;}
+  .modal-footer{padding:14px 20px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:10px; background:var(--concrete-50);}
+  .form-group{display:flex; flex-direction:column; gap:4px; margin-bottom:12px;}
+  .form-group label{font-size:11px; font-weight:700; text-transform:uppercase; color:var(--ink-600); letter-spacing:.04em;}
+  .form-group input, .form-group select, .form-group textarea{
+    padding:8px 12px; border:1px solid var(--border-strong); background:#fff; font:inherit; font-size:13px; outline:none;
+  }
+
+  .prj-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 14px; }
+  .prj-card {
+    background: #fff; border: 1px solid var(--border); padding: 16px;
+    clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);
+    display: flex; flex-direction: column; justify-content: space-between;
+  }
+ 
+  ::-webkit-scrollbar{width:8px; height:8px;}
+  ::-webkit-scrollbar-thumb{background:var(--border-strong);}
+ 
+  @media (max-width:1400px){
+    .kpi-grid{grid-template-columns:repeat(3,1fr);}
+    .row-3{grid-template-columns:1fr;}
+    .row-2{grid-template-columns:1fr;}
+    .equip-grid{grid-template-columns:repeat(2,1fr);}
+    .prj-grid{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+ 
+<aside class="sidebar">
+  <div class="hazard-strip"></div>
+  <div class="brand">
+    <div class="brand-mark">BC</div>
+    <div class="brand-text">
+      <div class="name">BuildControl</div>
+      <div class="sub">Şantiye Yönetim Sistemi</div>
+    </div>
+  </div>
+  <nav class="nav" id="navList"></nav>
+  <div class="sidebar-user">
+    <div class="avatar">ES</div>
+    <div>
+      <div class="uname">Engin Soydan</div>
+      <div class="urole">Proje Yöneticisi</div>
+    </div>
+  </div>
+</aside>
+ 
+<div class="main">
+  <div class="topbar">
+    <div class="project-select">
+      <span class="label">Aktif Proje</span>
+      <select id="projectSelect" onchange="updateProjectSelect(this.value)">
+        <!-- Options populated dynamically -->
+      </select>
+    </div>
+    <div class="topbar-right">
+      <button class="btn-action" onclick="openQuickModal()">+ HIZLI SAHA İŞLEMİ</button>
+      <div class="icon-btn" title="Bildirimler">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+        <span class="badge" id="notifBadge">3</span>
+      </div>
+      <div class="topbar-user">
+        <div class="avatar" style="width:32px;height:32px;font-size:11px;">AİA</div>
+        <div>
+          <div class="tname">ABC İnşaat A.Ş.</div>
+          <div class="tco">Firma Yöneticisi</div>
+        </div>
+      </div>
+    </div>
+  </div>
+ 
+  <div class="content" id="content"></div>
+</div>
+
+<div id="modalContainer"></div>
+ 
+<script>
+// Dynamic API path detection for any port
+const API_BASE = window.location.origin + '/api';
+
+let PROJECTS_DATA = [
+  { id:'KV-2024', name:'Kent Villaları Konut Projesi', employer:'ABC Holding A.Ş.', budget:'₺120.000.000', progress:63, status:'Devam Ediyor', date:'2024-01-15' },
+  { id:'MV-2024', name:'Metro Viyadük İnşaatı', employer:'İBB Ulaşım Daire Bşk.', budget:'₺340.000.000', progress:48, status:'Devam Ediyor', date:'2023-09-01' },
+  { id:'MP-2023', name:'Merkez Plaza İş Kulesi', employer:'Global Finans Yatırım', budget:'₺210.000.000', progress:100, status:'Tamamlandı', date:'2022-04-10' }
+];
+
+let QUICK_LOGS = [
+  { time: '13:14', user: 'Engin Soydan', type: 'Şantiye Defteri', detail: 'A Blok 3. kat tabliye beton dökümü tamamlandı (120 m³ C30 hazır beton kullanıldı).', isNew: false },
+  { time: '11:45', user: 'Melis Karadağ', type: 'Beton Kırımı', detail: 'K-125 numunesi 28 günlük basınç testi 32.1 MPa (Uygun).', isNew: false },
+  { time: '09:30', user: 'Volkan Yıldırım', type: 'İSG Denetimi', detail: 'Kule vinç geçiş alanı güvenlik şeridi yenilendi.', isNew: false }
+];
+
+let PERSONNEL_DATA = [
+  { name: 'Engin Soydan', role: 'Şantiye Şefi', certs: 'A Sınıfı İSG, PMP', site: 'Kent Villaları', status: 'Geldi', isNew: false },
+  { name: 'Melis Karadağ', role: 'İnşaat Mühendisi', certs: 'Beton Kalite Kontrolü', site: 'Kent Villaları', status: 'Geldi', isNew: false },
+  { name: 'Volkan Yıldırım', role: 'İSG Uzmanı', certs: 'B Sınıfı İSG', site: 'Kent Villaları', status: 'Geldi', isNew: false },
+  { name: 'Turgut Çelik', role: 'Kalıp Ustası', certs: 'Mesleki Yeterlilik Belgesi', site: 'Metro Viyadük', status: 'Vardiyada', isNew: false },
+  { name: 'Orhan Şahin', role: 'Demirci Ustası', certs: 'Ağır Sanayi Yeterlilik', site: 'Kent Villaları', status: 'Geldi', isNew: false }
+];
+
+let EQUIPMENT_DATA = [
+  { 
+    id: 'EKP-01', name: 'Ekskavatör (CAT 320)', model: 'Caterpillar 320D', year: '2022', plate: '34 BC 4892', 
+    hours: 1250, operator: 'Barış Alkan', site: 'Kent Villaları - A Blok Kazı', status: 'Çalışıyor', ok: true, fuel: '45 L/gün',
+    logs: [
+      { date: '10.05.2024', type: 'Periyodik Yağ & Filtre Bakımı', tech: 'CAT Borusan Servis', cost: '₺14.500', status: 'Tamamlandı' },
+      { date: '22.03.2024', type: 'Hidrolik Hortum Değişimi', tech: 'Özcan İş Makinesi', cost: '₺6.200', status: 'Tamamlandı' }
+    ]
+  },
+  { 
+    id: 'EKP-02', name: 'Kule Vinç (Potain MC85)', model: 'Potain MC85B', year: '2021', plate: 'K-VINC-01', 
+    hours: 850, operator: 'Cevdet Soner', site: 'Kent Villaları - B Blok', status: 'Çalışıyor', ok: true, fuel: 'Elektrik (45 kW)',
+    logs: [
+      { date: '01.05.2024', type: 'Aylık Halat & Statik Periyodik Kontrol', tech: 'Makine Mühendisleri Odası', cost: '₺8.000', status: 'Onaylandı' }
+    ]
+  },
+  { 
+    id: 'EKP-03', name: 'Beton Pompası (Putzmeister)', model: 'Putzmeister BSF 38-4', year: '2020', plate: '34 PR 1092', 
+    hours: 1420, operator: 'Kaan Yılmazer', site: 'Kent Villaları', status: 'Bakımda', ok: false, fuel: '60 L/gün',
+    logs: [
+      { date: '14.05.2024', type: 'Piston & Valf Ağır Bakımı', tech: 'Putzmeister Yetkili Servis', cost: '₺42.000', status: 'Serviste' }
+    ]
+  },
+  { 
+    id: 'EKP-04', name: 'Jeneratör (Aksa 250 kVA)', model: 'Aksa APD-250', year: '2023', plate: 'JEN-250', 
+    hours: 320, operator: 'Okan Tekin', site: 'Şantiye Ana Pano', status: 'Çalışıyor', ok: true, fuel: '18 L/saat',
+    logs: [
+      { date: '12.04.2024', type: 'Otomatik Transfer Pano Kontrolü', tech: 'Aksa Jeneratör Servisi', cost: '₺4.500', status: 'Tamamlandı' }
+    ]
+  }
+];
+
+const ICONS = {
+  dashboard:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>',
+  projects:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/></svg>',
+  site:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 21h18M5 21V10l7-5 7 5v11M9 21v-6h6v6"/></svg>',
+  gantt:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h8M4 12h14M4 18h6"/></svg>',
+  progress:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2v10l7 7"/><circle cx="12" cy="12" r="10"/></svg>',
+  team:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20c0-3.6 3-6 6.5-6s6.5 2.4 6.5 6"/><circle cx="18" cy="8.5" r="2.4"/><path d="M16.5 14.2c2.6.5 4.5 2.5 4.5 5.3"/></svg>',
+  equipment:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 15l4-8 4 2 3-6 5 12z"/><circle cx="7" cy="19" r="2"/><circle cx="17" cy="19" r="2"/></svg>',
+  material:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7"/></svg>',
+  concrete:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 20l3-9 3 3 3-8 3 6 4 8z"/></svg>',
+  core:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="6" r="3"/><path d="M12 9v13M9 22h6"/></svg>',
+  audit:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>',
+  docs:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>',
+  safety:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/></svg>',
+  reports:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19h16"/><rect x="6" y="10" width="3" height="6"/><rect x="11" y="6" width="3" height="10"/><rect x="16" y="13" width="3" height="3"/></svg>',
+  settings:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.9-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1-1.6 1.7 1.7 0 00-1.9.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.9 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1 1.7 1.7 0 00-.3-1.9l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.9.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.9-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.9V9c.2.6.7 1 1.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg>',
+  chev:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>',
+};
+ 
+const MODULES = [
+  {id:'dashboard', label:'Ana Dashboard', icon:'dashboard', group:false},
+  {id:'projeler', label:'Projeler', icon:'projects', group:true},
+  {id:'santiye', label:'Şantiye Takibi', icon:'site', group:true},
+  {id:'is-programi', label:'İş Programı (Gantt)', icon:'gantt', group:true},
+  {id:'hakedis', label:'Hakediş Yönetimi', icon:'progress', group:true},
+  {id:'personel', label:'Personel Yönetimi', icon:'team', group:true},
+  {id:'ekipman', label:'Ekipman Yönetimi', icon:'equipment', group:true},
+  {id:'malzeme', label:'Malzeme Yönetimi', icon:'material', group:true},
+  {id:'beton', label:'Beton Testleri', icon:'concrete', group:true},
+  {id:'karot', label:'Karot Raporları', icon:'core', group:true},
+  {id:'denetimler', label:'Denetimler', icon:'audit', group:true},
+  {id:'evrak', label:'Evrak Yönetimi', icon:'docs', group:true},
+  {id:'guvenlik', label:'İş Güvenliği', icon:'safety', group:true},
+  {id:'raporlar', label:'Raporlar', icon:'reports', group:true},
+  {id:'ayarlar', label:'Ayarlar', icon:'settings', group:true},
+];
+
+let currentGanttMode = 'bugun';
+ 
+const navList = document.getElementById('navList');
+MODULES.forEach(m=>{
+  const el = document.createElement('div');
+  el.className = 'nav-item' + (m.id==='dashboard' ? ' active' : '');
+  el.dataset.id = m.id;
+  el.innerHTML = ICONS[m.icon] + `<span>${m.label}</span>` + (m.group ? `<span class="chev">${ICONS.chev}</span>` : '');
+  el.addEventListener('click', ()=>selectModule(m.id));
+  navList.appendChild(el);
+});
+
+async function syncSQLData() {
+  try {
+    const prjRes = await fetch(`${API_BASE}/projects`);
+    if (prjRes.ok) {
+      const prjs = await prjRes.json();
+      if(prjs.length > 0) {
+        PROJECTS_DATA = prjs.map(p => ({
+          id: p.id, name: p.name, employer: p.employer, 
+          budget: `₺${Number(p.budget).toLocaleString('tr-TR')}`, 
+          progress: p.progress_percent || p.progress, 
+          status: p.status, date: p.start_date
+        }));
+      }
+    }
+
+    const perRes = await fetch(`${API_BASE}/personnel`);
+    if (perRes.ok) {
+      const pers = await perRes.json();
+      if(pers.length > 0) {
+        PERSONNEL_DATA = pers.map(p => ({
+          name: p.full_name, role: p.role, certs: p.certs, site: p.assigned_site, status: p.status, isNew: p.is_new
+        }));
+      }
+    }
+
+    const logRes = await fetch(`${API_BASE}/quicklogs`);
+    if (logRes.ok) {
+      const logs = await logRes.json();
+      if(logs.length > 0) {
+        QUICK_LOGS = logs.map(l => ({
+          time: l.log_time || '12:00', user: l.user_name, type: l.log_type, detail: l.detail, isNew: l.is_new
+        }));
+      }
+    }
+  } catch(e) {}
+}
+
+function updateProjectDropdownOptions() {
+  const sel = document.getElementById('projectSelect');
+  if(sel){
+    sel.innerHTML = PROJECTS_DATA.map(p=>`<option value="${p.id}">${p.id} - ${p.name.toUpperCase()}</option>`).join('');
+  }
+}
+
+function updateProjectSelect(val){
+  console.log('Active Project Selected:', val);
+}
+ 
+function selectModule(id){
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active', n.dataset.id===id));
+  const content = document.getElementById('content');
+  if(id === 'dashboard'){
+    renderDashboard();
+  } else if(id === 'projeler') {
+    renderProjects();
+  } else if(id === 'santiye') {
+    renderSiteLogs();
+  } else if(id === 'hakedis') {
+    renderHakedis();
+  } else if(id === 'beton') {
+    renderConcrete();
+  } else if(id === 'is-programi') {
+    renderGanttDetail();
+  } else if(id === 'personel') {
+    renderPersonnel();
+  } else if(id === 'ekipman') {
+    renderEquipmentDetail();
+  } else if(id === 'malzeme') {
+    renderMaterials();
+  } else if(id === 'evrak') {
+    renderDocs();
+  } else if(id === 'guvenlik') {
+    renderSafety();
+  } else if(id === 'denetimler') {
+    renderAuditsDetail();
+  } else if(id === 'raporlar') {
+    renderReports();
+  } else {
+    content.innerHTML = `
+      <div class="panel" style="padding:30px;">
+        <div class="panel-title" style="font-size:22px;">${id.toUpperCase()} MODÜLÜ</div>
+        <p style="color:var(--ink-600); margin-top:10px;">Modül ekranı aktif durumda çalışmaktadır.</p>
+      </div>`;
+  }
+}
+ 
+function renderDashboard(){
+  updateProjectDropdownOptions();
+  const content = document.getElementById('content');
+  content.innerHTML = `
+    <!-- Belirgin Panel 1: Yapılan Hızlı İşlemler Geçmişi -->
+    <div class="prominent-panel">
+      <div class="prominent-head">
+        <div class="prominent-title">
+          <span>⚡ YAPIYOR OLDUĞUNUZ SON HIZLI İŞLEMLER VE CANLI SAHA AKIŞI</span>
+          <span class="new-tag-pulse">CANLI LOG</span>
+        </div>
+        <button class="btn-action" style="font-size:13px; padding:4px 12px;" onclick="openQuickModal()">+ YENİ SAHA İŞLEMİ</button>
+      </div>
+      <div style="padding:16px;">
+        <div style="display:flex; flex-direction:column; gap:10px;" id="quickLogsContainer">
+          ${QUICK_LOGS.map(l => `
+            <div style="display:flex; align-items:center; gap:14px; background:#fff; border:1px solid var(--border); padding:10px 14px; border-left:4px solid var(--orange-600);">
+              <span class="mono" style="font-size:12px; font-weight:700; color:var(--ink-900);">${l.time}</span>
+              <span class="tag tag-ok" style="font-size:10px;">${l.type}</span>
+              <div style="flex:1; font-size:12.5px; color:var(--ink-900);">
+                <strong>${l.user}:</strong> ${l.detail}
+              </div>
+              ${l.isNew ? '<span class="new-tag-pulse">YENİ EKLENDİ</span>' : '<span style="font-size:11px; color:var(--green-600); font-weight:700;">✓ İşlendi</span>'}
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+
+    <!-- KPI Grid -->
+    <div class="kpi-grid" id="kpiGrid"></div>
+ 
+    <div class="row row-3">
+      <div class="panel">
+        <div class="panel-head"><div class="panel-title">Proje İlerleme</div></div>
+        <div class="dimline"><span class="dimtag">ÖZET</span></div>
+        <div class="panel-body">
+          <div class="donut-flex">
+            <div class="donut-wrap" style="width:126px;height:126px;">
+              <canvas id="progressDonut" width="126" height="126"></canvas>
+              <div class="donut-center"><div class="big">%63</div><div class="small">Genel</div></div>
+            </div>
+            <div class="legend">
+              <div class="legend-row"><span class="dot" style="background:#FF5A1F"></span>Tamamlanan<b>%63</b></div>
+              <div class="legend-row"><span class="dot" style="background:#F0A824"></span>Devam Eden<b>%25</b></div>
+              <div class="legend-row"><span class="dot" style="background:#8C8272"></span>Planlanan<b>%10</b></div>
+              <div class="legend-row"><span class="dot" style="background:#C1432B"></span>Geciken<b>%2</b></div>
+            </div>
+          </div>
+        </div>
+      </div>
+ 
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">İş Programı</div>
+          <div class="gantt-toolbar">
+            <span class="pill ${currentGanttMode==='bugun'?'':'pill-outline'}" onclick="toggleGanttMode('bugun')">Bugün</span>
+            <span class="pill ${currentGanttMode==='haftalik'?'':'pill-outline'}" onclick="toggleGanttMode('haftalik')">Haftalık</span>
+          </div>
+        </div>
+        <div class="dimline"><span class="dimtag">GANTT (HAFTALIK / BUGÜN TAKİBİ)</span></div>
+        <div class="panel-body">
+          <div class="gantt" id="ganttChart"></div>
+        </div>
+      </div>
+ 
+      <div class="panel">
+        <div class="panel-head"><div class="panel-title">Hakediş</div><div class="panel-link" onclick="selectModule('hakedis')">Detay</div></div>
+        <div class="dimline"><span class="dimtag">MALİ</span></div>
+        <div class="panel-body">
+          <table style="margin-bottom:6px;">
+            <tr><td style="padding-left:0;color:var(--ink-400);">Sözleşme Bedeli</td><td class="mono-cell" style="text-align:right;padding-right:0;">₺120.000.000</td></tr>
+            <tr><td style="padding-left:0;color:var(--ink-400);">Toplam Hakediş</td><td class="mono-cell" style="text-align:right;padding-right:0;">₺68.450.000</td></tr>
+            <tr><td style="padding-left:0;color:var(--ink-400);">Önceki Ödemeler</td><td class="mono-cell" style="text-align:right;padding-right:0;">₺43.700.000</td></tr>
+            <tr><td style="padding-left:0;color:var(--ink-900);font-weight:700;">Kalan Tutar</td><td class="mono-cell" style="text-align:right;padding-right:0;">₺51.550.000</td></tr>
+          </table>
+          <div class="donut-wrap" style="width:116px;height:116px;margin:8px auto 0;">
+            <canvas id="collectDonut" width="116" height="116"></canvas>
+            <div class="donut-center"><div class="big">%57</div><div class="small">Tahsilat</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+ 
+    <!-- Belirgin Panel 2: Son Eklenen Projeler Listesi -->
+    <div class="prominent-panel">
+      <div class="prominent-head">
+        <div class="prominent-title">
+          <span>🏢 SİSTEMDEKİ TÜM PROJELER VE YENİ EKLENEN PROJE PORTFÖYÜ</span>
+          <span class="new-tag-pulse">${PROJECTS_DATA.length} AKTİF PROJE</span>
+        </div>
+        <button class="btn-action" style="font-size:13px; padding:4px 12px; background:var(--steel-900);" onclick="openNewProjectModal()">+ YENİ PROJE EKLE</button>
+      </div>
+      <div style="padding:16px;">
+        <div class="prj-grid">
+          ${PROJECTS_DATA.map(p => `
+            <div class="prj-card">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <span class="mono-cell" style="font-size:13px; font-weight:800; color:var(--orange-600);">${p.id}</span>
+                <span class="tag tag-ok">${p.status}</span>
+              </div>
+              <h4 style="font-size:14px; font-weight:700; color:var(--ink-900); margin-bottom:6px;">${p.name}</h4>
+              <div style="font-size:11.5px; color:var(--ink-600); margin-bottom:10px;">İşveren: ${p.employer}</div>
+              <div style="border-top:1px solid var(--concrete-100); padding-top:8px; display:flex; justify-content:space-between; font-size:11.5px;">
+                <span>Bedel: <strong class="mono-cell">${p.budget}</strong></span>
+                <span>İlerleme: <strong>%${p.progress}</strong></span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+
+    <div class="row row-2">
+      <div class="panel">
+        <div class="panel-head"><div class="panel-title">Günlük Raporlar</div><div class="panel-link" onclick="selectModule('santiye')">Tümü</div></div>
+        <div class="dimline"><span class="dimtag">SAHA</span></div>
+        <div class="panel-body" id="reportsList"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><div class="panel-title">Son Denetimler</div><div class="panel-link" onclick="selectModule('denetimler')">Tümü</div></div>
+        <div class="dimline"><span class="dimtag">KALİTE</span></div>
+        <div class="panel-body" id="auditList"></div>
+      </div>
+    </div>
+ 
+    <div class="row row-2">
+      <div class="panel">
+        <div class="panel-head"><div class="panel-title">Beton Test Sonuçları</div><div class="panel-link" onclick="selectModule('beton')">Tümü</div></div>
+        <div class="dimline"><span class="dimtag">LABORATUVAR</span></div>
+        <div class="panel-body">
+          <table>
+            <thead><tr><th>Tarih</th><th>Sınıf</th><th>Numune</th><th>7 Gün</th><th>28 Gün</th><th>Sonuç</th></tr></thead>
+            <tbody id="concreteTable"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><div class="panel-title">Personel Dağılımı</div><div class="panel-link" onclick="selectModule('personel')">Tümü</div></div>
+        <div class="dimline"><span class="dimtag">İK</span></div>
+        <div class="panel-body">
+          <div class="donut-flex">
+            <div class="donut-wrap" style="width:126px;height:126px;">
+              <canvas id="staffDonut" width="126" height="126"></canvas>
+              <div class="donut-center"><div class="big">${81 + PERSONNEL_DATA.length}</div><div class="small">Toplam</div></div>
+            </div>
+            <div class="legend">
+              <div class="legend-row"><span class="dot" style="background:#FF5A1F"></span>Mühendis<b>12</b></div>
+              <div class="legend-row"><span class="dot" style="background:#F0A824"></span>Tekniker<b>8</b></div>
+              <div class="legend-row"><span class="dot" style="background:#3F8F5B"></span>Usta<b>24</b></div>
+              <div class="legend-row"><span class="dot" style="background:#8C8272"></span>İşçi<b>38</b></div>
+              <div class="legend-row"><span class="dot" style="background:#DCD5C7"></span>Diğer<b>4</b></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+ 
+    <div class="row row-2">
+      <div class="panel">
+        <div class="panel-head"><div class="panel-title">Ekipman Durumu (Detay İçin Tıklayın)</div><div class="panel-link" onclick="selectModule('ekipman')">Tümü</div></div>
+        <div class="dimline"><span class="dimtag">SAHA</span></div>
+        <div class="panel-body"><div class="equip-grid" id="equipGrid"></div></div>
+      </div>
+    </div>
+  `;
+ 
+  buildKPIs();
+  buildDonuts();
+  buildGantt(currentGanttMode);
+  buildReports();
+  buildAudits();
+  buildConcreteTable();
+  buildEquipment();
+}
+
+function toggleGanttMode(mode) {
+  currentGanttMode = mode;
+  buildGantt(mode);
+}
+
+function renderProjects(){
+  document.getElementById('content').innerHTML = `
+    <div class="prominent-panel">
+      <div class="prominent-head">
+        <div class="prominent-title">
+          <span>🏢 EKLENEN TÜM PROJELER KÜNYE LİSTESİ</span>
+          <span class="new-tag-pulse">${PROJECTS_DATA.length} PORTFÖY</span>
+        </div>
+        <button class="btn-action" style="font-size:13px; padding:4px 12px; background:var(--steel-900);" onclick="openNewProjectModal()">+ YENİ PROJE EKLE</button>
+      </div>
+      <div style="padding:16px;">
+        <div class="prj-grid" style="margin-top:0;">
+          ${PROJECTS_DATA.map(p => `
+            <div class="prj-card">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <span class="mono-cell" style="font-size:14px; font-weight:800; color:var(--orange-600);">${p.id}</span>
+                <span class="tag tag-ok">${p.status}</span>
+              </div>
+              <h4 style="font-size:15px; font-weight:700; color:var(--ink-900); margin-bottom:6px;">${p.name}</h4>
+              <div style="font-size:12px; color:var(--ink-600); margin-bottom:10px;">İşveren: ${p.employer}</div>
+              <div style="border-top:1px solid var(--concrete-100); padding-top:8px; display:flex; justify-content:space-between; font-size:12px;">
+                <span>Sözleşme Bedeli: <strong class="mono-cell">${p.budget}</strong></span>
+                <span>Fiziki İlerleme: <strong>%${p.progress}</strong></span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderPersonnel(){
+  document.getElementById('content').innerHTML = `
+    <div class="prominent-panel">
+      <div class="prominent-head">
+        <div class="prominent-title">
+          <span>👷 PERSONEL KADROSU VE PUANTAJ LİSTESİ</span>
+          <span class="new-tag-pulse">${PERSONNEL_DATA.length} PERSONEL</span>
+        </div>
+        <button class="btn-action" style="font-size:13px; padding:6px 14px;" onclick="openNewPersonnelModal()">+ YENİ PERSONEL EKLE</button>
+      </div>
+      <div style="padding:16px;">
+        <table>
+          <thead>
+            <tr><th>Ad Soyad</th><th>Görev / Unvan</th><th>Sertifikalar / Yetkinlik</th><th>Görevli Şantiye</th><th>Puantaj Durumu</th><th>Kayıt Tipi</th></tr>
+          </thead>
+          <tbody>
+            ${PERSONNEL_DATA.map(p => `
+              <tr>
+                <td style="font-weight:700; color:var(--ink-900);">${p.name}</td>
+                <td><strong style="color:var(--orange-600);">${p.role}</strong></td>
+                <td>${p.certs}</td>
+                <td>${p.site}</td>
+                <td><span class="tag ${p.status==='Geldi'?'tag-ok':'tag-fix'}">${p.status}</span></td>
+                <td>${p.isNew ? '<span class="new-tag-pulse">YENİ EKLENDİ</span>' : '<span style="font-size:11px; color:var(--ink-400);">Mevcut Kadro</span>'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+function renderEquipmentDetail(){
+  document.getElementById('content').innerHTML = `
+    <div class="prominent-panel">
+      <div class="prominent-head">
+        <div class="prominent-title">
+          <span>🚜 EKİPMAN PARKI VE MAKİNE KARTLARI (DETAY İÇİN KARTA TIKLAYIN)</span>
+          <span class="new-tag-pulse">${EQUIPMENT_DATA.length} MAKİNE</span>
+        </div>
+        <button class="btn-action" style="font-size:13px; padding:6px 14px;" onclick="openNewEquipmentModal()">+ YENİ EKİPMAN EKLE</button>
+      </div>
+      <div style="padding:20px;">
+        <div class="equip-grid" id="equipGridDetail" style="grid-template-columns:repeat(3,1fr);"></div>
+      </div>
+    </div>`;
+  buildEquipment('equipGridDetail');
+}
+
+function openEquipmentDetailModal(eqId) {
+  const eq = EQUIPMENT_DATA.find(e => e.id === eqId) || EQUIPMENT_DATA[0];
+  document.getElementById('modalContainer').innerHTML = `
+    <div class="modal-overlay" onclick="closeModal(event)">
+      <div class="modal-box" style="max-width:780px;">
+        <div class="modal-header">
+          <span>🚜 EKİPMAN DETAY & BAKIM KARNESİ: ${eq.name.toUpperCase()}</span>
+          <span style="cursor:pointer;" onclick="closeModal()">✕</span>
+        </div>
+        <div class="modal-body">
+          <div style="display:flex; gap:16px; align-items:center; background:var(--steel-900); color:#fff; padding:16px; margin-bottom:16px; clip-path:polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);">
+            <div style="width:60px; height:60px; background:var(--orange-600); color:#fff; display:flex; align-items:center; justify-content:center;">
+              ${ICONS.equipment}
+            </div>
+            <div>
+              <div style="font-family:'Big Shoulders Display'; font-size:20px; font-weight:800;">${eq.name}</div>
+              <div style="font-size:12px; color:#A99F8C; font-family:'IBM Plex Mono'; margin-top:2px;">Kod: ${eq.id} | Plaka/Seri No: ${eq.plate} | Yıl: ${eq.year}</div>
+            </div>
+            <div style="margin-left:auto; text-align:right;">
+              <span class="tag ${eq.ok?'tag-ok':'tag-bad'}" style="font-size:12px;">${eq.status}</span>
+              <div style="font-size:11px; color:#A99F8C; margin-top:4px; font-family:'IBM Plex Mono';">${eq.hours} Çalışma Saati</div>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-bottom:16px;">
+            <div style="background:#fff; border:1px solid var(--border); padding:12px;">
+              <div style="font-size:10.5px; color:var(--ink-400); text-transform:uppercase; font-weight:700;">ZİMMETLİ OPERATÖR</div>
+              <div style="font-size:14px; font-weight:700; color:var(--ink-900); margin-top:4px;">${eq.operator}</div>
+              <div style="font-size:11px; color:var(--green-600); font-weight:600; margin-top:2px;">✓ Yeterlilik Belgesi Aktif</div>
+            </div>
+            <div style="background:#fff; border:1px solid var(--border); padding:12px;">
+              <div style="font-size:10.5px; color:var(--ink-400); text-transform:uppercase; font-weight:700;">GÖREVLİ ŞANTİYE LOKASYONU</div>
+              <div style="font-size:13px; font-weight:700; color:var(--ink-900); margin-top:4px;">${eq.site}</div>
+            </div>
+            <div style="background:#fff; border:1px solid var(--border); padding:12px;">
+              <div style="font-size:10.5px; color:var(--ink-400); text-transform:uppercase; font-weight:700;">YAKIT / ENERJİ TÜKETİMİ</div>
+              <div style="font-size:14px; font-weight:800; color:var(--orange-600); margin-top:4px; font-family:'IBM Plex Mono';">${eq.fuel}</div>
+            </div>
+          </div>
+
+          <div style="font-weight:800; font-family:'Big Shoulders Display'; font-size:16px; text-transform:uppercase; margin-bottom:8px; color:var(--steel-900);">
+            🛠 GEÇMİŞ BAKIM & SERVİS KAYITLARI
+          </div>
+          <table style="margin-bottom:16px;">
+            <thead>
+              <tr><th>Bakım Tarihi</th><th>İşlem Türü</th><th>Teknik Servis</th><th>Maliyet</th><th>Durum</th></tr>
+            </thead>
+            <tbody>
+              ${(eq.logs || []).map(l => `
+                <tr>
+                  <td class="mono-cell">${l.date}</td>
+                  <td style="font-weight:700;">${l.type}</td>
+                  <td>${l.tech}</td>
+                  <td class="mono-cell">${l.cost}</td>
+                  <td><span class="tag tag-ok">${l.status}</span></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-action" style="background:var(--steel-700);" onclick="alert('Bakım Talebi Servise Gönderildi!')">+ BAKIM KAYDI AÇ</button>
+          <button class="btn-action" style="background:var(--orange-600);" onclick="closeModal()">KAPAT</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function openNewEquipmentModal() {
+  document.getElementById('modalContainer').innerHTML = `
+    <div class="modal-overlay" onclick="closeModal(event)">
+      <div class="modal-box">
+        <div class="modal-header">
+          <span>🚜 MAKİNE PARKI — YENİ EKİPMAN EKLE</span>
+          <span style="cursor:pointer;" onclick="closeModal()">✕</span>
+        </div>
+        <div class="modal-body">
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+            <div class="form-group">
+              <label>Ekipman Adı & Tipi</label>
+              <input id="eqNameInput" type="text" placeholder="Örn: Silindir (Hamm HD12)" />
+            </div>
+            <div class="form-group">
+              <label>Marka / Model</label>
+              <input id="eqModelInput" type="text" placeholder="Örn: Hamm HD 12 VV" />
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+            <div class="form-group">
+              <label>Plaka / Seri No</label>
+              <input id="eqPlateInput" type="text" placeholder="Örn: 34 BC 9912" />
+            </div>
+            <div class="form-group">
+              <label>Zimmetli Operatör</label>
+              <input id="eqOpInput" type="text" placeholder="Örn: Orhan Şahin" />
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+            <div class="form-group">
+              <label>Görevli Şantiye</label>
+              <select id="eqSiteInput">
+                <option>Kent Villaları Konut Projesi</option>
+                <option>Metro Viyadük İnşaatı</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Çalışma Durumu</label>
+              <select id="eqStatusInput">
+                <option value="Çalışıyor">Çalışıyor (Aktif)</option>
+                <option value="Bakımda">Bakımda / Arızalı</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-action" style="background:var(--steel-700);" onclick="closeModal()">İptal</button>
+          <button class="btn-action" onclick="submitNewEquipment()">EKİPMANI KAYDET</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function submitNewEquipment() {
+  const name = document.getElementById('eqNameInput').value || 'Yeni İş Makinesi';
+  const model = document.getElementById('eqModelInput').value || 'Standart Model';
+  const plate = document.getElementById('eqPlateInput').value || 'SN-001';
+  const operator = document.getElementById('eqOpInput').value || 'Operatör Atanmadı';
+  const site = document.getElementById('eqSiteInput').value;
+  const status = document.getElementById('eqStatusInput').value;
+
+  const newEq = {
+    id: `EKP-0${EQUIPMENT_DATA.length+1}`,
+    name: name, model: model, year: '2024', plate: plate, hours: 50, operator: operator, site: site, status: status, ok: status === 'Çalışıyor', fuel: '35 L/gün',
+    logs: [{ date: new Date().toISOString().split('T')[0], type: 'Sisteme İlk Giriş ve Zimmet Kaydı', tech: 'Şantiye Garaj Amiri', cost: '₺0', status: 'Tamamlandı' }]
+  };
+
+  EQUIPMENT_DATA.unshift(newEq);
+  closeModal();
+  selectModule('ekipman');
+}
+
+function renderSiteLogs(){
+  document.getElementById('content').innerHTML = `
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title">Günlük Şantiye Defteri & Hızlı İşlemler</div>
+        <button class="btn-action" onclick="openQuickModal('santiye')">+ Hızlı Defter Girişi</button>
+      </div>
+      <div class="dimline"><span class="dimtag">GÜNLÜK RAPORLAR</span></div>
+      <div class="panel-body">
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          ${QUICK_LOGS.map(l => `
+            <div style="border:1px solid var(--border); padding:14px; background:#fff; border-left:4px solid var(--orange-600);">
+              <div style="display:flex; justify-content:space-between; font-weight:700;">
+                <span>${l.time} - ${l.type}</span>
+                <span class="tag tag-ok">Onaylı Log</span>
+              </div>
+              <p style="margin-top:6px; color:var(--ink-600); font-size:13px;"><strong>${l.user}:</strong> ${l.detail}</p>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderHakedis(){
+  document.getElementById('content').innerHTML = `
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title">Hakediş Cetveli (No: #05)</div>
+        <button class="btn-action" onclick="alert('Resmi Hakediş PDF oluşturuldu!')">Hakediş PDF İndir</button>
+      </div>
+      <div class="dimline"><span class="dimtag">METRAJ & MALİ</span></div>
+      <div class="panel-body">
+        <table>
+          <thead>
+            <tr><th>Poz Kodu</th><th>Açıklama</th><th>Metraj</th><th>Birim Fiyat</th><th>Tutar</th><th>Durum</th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="mono-cell">15.120.1001</td><td>Zemin Kazılması</td><td class="mono-cell">18.500 m³</td><td class="mono-cell">₺120</td><td class="mono-cell">₺2.220.000</td><td><span class="tag tag-ok">Onaylandı</span></td></tr>
+            <tr><td class="mono-cell">15.150.1005</td><td>C25/30 Beton Dökülmesi</td><td class="mono-cell">2.400 m³</td><td class="mono-cell">₺2.100</td><td class="mono-cell">₺5.040.000</td><td><span class="tag tag-ok">Onaylandı</span></td></tr>
+            <tr><td class="mono-cell">15.150.1007</td><td>C30/37 Beton Dökülmesi</td><td class="mono-cell">3.800 m³</td><td class="mono-cell">₺2.450</td><td class="mono-cell">₺9.310.000</td><td><span class="tag tag-fix">Onay Bekliyor</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+function renderConcrete(){
+  document.getElementById('content').innerHTML = `
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title">Beton & Laboratuvar Testleri</div>
+        <button class="btn-action" onclick="openQuickModal('beton')">+ Yeni Beton Kırımı</button>
+      </div>
+      <div class="dimline"><span class="dimtag">TS EN 206</span></div>
+      <div class="panel-body">
+        <table>
+          <thead><tr><th>Tarih</th><th>Sınıf</th><th>Döküm Yeri</th><th>7 Gün (MPa)</th><th>28 Gün (MPa)</th><th>Sonuç</th></tr></thead>
+          <tbody id="concreteTable2">
+            <tr><td class="mono-cell">15.05.2024</td><td>C25/30</td><td>A Blok 3. Kat Kolonlar</td><td class="mono-cell">24.2</td><td class="mono-cell">32.1</td><td><span class="tag tag-ok">Uygun</span></td></tr>
+            <tr><td class="mono-cell">13.05.2024</td><td>C25/30</td><td>A Blok 3. Kat Döşeme</td><td class="mono-cell">23.8</td><td class="mono-cell">31.4</td><td><span class="tag tag-ok">Uygun</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+function renderGanttDetail(){
+  document.getElementById('content').innerHTML = `
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title">İş Programı Detay (Gantt)</div>
+        <div class="gantt-toolbar">
+          <span class="pill ${currentGanttMode==='bugun'?'':'pill-outline'}" onclick="toggleGanttMode('bugun')">Bugün</span>
+          <span class="pill ${currentGanttMode==='haftalik'?'':'pill-outline'}" onclick="toggleGanttMode('haftalik')">Haftalık</span>
+        </div>
+      </div>
+      <div class="dimline"><span class="dimtag">AKTİVİTELER</span></div>
+      <div class="panel-body"><div class="gantt" id="ganttChart2"></div></div>
+    </div>`;
+  buildGantt(currentGanttMode);
+}
+
+function renderMaterials(){
+  document.getElementById('content').innerHTML = `
+    <div class="panel">
+      <div class="panel-head"><div class="panel-title">Malzeme & Ambar Stok</div></div>
+      <div class="dimline"><span class="dimtag">STOK</span></div>
+      <div class="panel-body">
+        <table>
+          <thead><tr><th>Malzeme</th><th>Kategori</th><th>Ambar Stok</th><th>Kritik Eşik</th><th>Durum</th></tr></thead>
+          <tbody>
+            <tr><td style="font-weight:700;">Portland Çimentosu</td><td>Bağlayıcı</td><td class="mono-cell">1.250 Torba</td><td class="mono-cell">300 Torba</td><td><span class="tag tag-ok">Stok Yeterli</span></td></tr>
+            <tr><td style="font-weight:700;">Ø16 Nervürlü Demir</td><td>Metal</td><td class="mono-cell">42 Ton</td><td class="mono-cell">15 Ton</td><td><span class="tag tag-ok">Stok Yeterli</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+function renderDocs(){
+  document.getElementById('content').innerHTML = `
+    <div class="panel">
+      <div class="panel-head"><div class="panel-title">Evrak Arşivi</div></div>
+      <div class="dimline"><span class="dimtag">DİJİTAL ARŞİV</span></div>
+      <div class="panel-body">
+        <table>
+          <thead><tr><th>Dosya Adı</th><th>Kategori</th><th>Tarih</th><th>Versiyon</th></tr></thead>
+          <tbody>
+            <tr><td style="font-weight:700;">Yapı_Ruhsatı_KentVillaları.pdf</td><td>Yapı Ruhsatı</td><td>10.01.2024</td><td>v1.0</td></tr>
+            <tr><td style="font-weight:700;">Statik_Proje_Cizimleri.dwg</td><td>Proje Çizimleri</td><td>01.02.2024</td><td>v3.0</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+function renderSafety(){
+  document.getElementById('content').innerHTML = `
+    <div class="panel">
+      <div class="panel-head"><div class="panel-title">İş Güvenliği (İSG) Kayıtları</div></div>
+      <div class="dimline"><span class="dimtag">İSG</span></div>
+      <div class="panel-body">
+        <table>
+          <thead><tr><th>Olay Kodu</th><th>Olay Tanımı</th><th>Risk Seviyesi</th><th>Durum</th></tr></thead>
+          <tbody>
+            <tr><td class="mono-cell">İSG-2024-01</td><td>İskele Kurulum Risk Analizi</td><td><span class="tag tag-bad">Yüksek</span></td><td><span class="tag tag-ok">Önlem Alındı</span></td></tr>
+            <tr><td class="mono-cell">İSG-2024-03</td><td>Kule Vinç Geçiş Alanı Uyarısı</td><td><span class="tag tag-fix">Orta</span></td><td>İncelemede</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+function renderAuditsDetail(){
+  document.getElementById('content').innerHTML = `
+    <div class="panel">
+      <div class="panel-head"><div class="panel-title">Denetimler</div></div>
+      <div class="dimline"><span class="dimtag">DENETİM</span></div>
+      <div class="panel-body" id="auditList2"></div>
+    </div>`;
+  buildAudits();
+}
+
+function renderReports(){
+  document.getElementById('content').innerHTML = `
+    <div class="panel">
+      <div class="panel-head"><div class="panel-title">Raporlama Merkezi</div></div>
+      <div class="dimline"><span class="dimtag">RAPORLAR</span></div>
+      <div class="panel-body">
+        <p style="margin-bottom:12px;">Tek tıkla resmi PDF/Excel raporları indirin:</p>
+        <button class="btn-action" onclick="alert('Günlük Saha Raporu indirildi.')">Günlük Saha Raporu İndir</button>
+        <button class="btn-action" style="margin-left:10px; background:var(--steel-900);" onclick="alert('Hakediş Özeti Excel indirildi.')">Hakediş Özeti Excel</button>
+      </div>
+    </div>`;
+}
+
+function openQuickModal(prefType = 'santiye'){
+  document.getElementById('modalContainer').innerHTML = `
+    <div class="modal-overlay" onclick="closeModal(event)">
+      <div class="modal-box">
+        <div class="modal-header">
+          <span>⚡ HIZLI SAHA İŞLEMİ VE GÜNLÜK KAYIT</span>
+          <span style="cursor:pointer;" onclick="closeModal()">✕</span>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>İşlem Türü</label>
+            <select id="quickTypeSelect">
+              <option value="Şantiye Defteri" ${prefType==='santiye'?'selected':''}>Şantiye Defteri Girişi</option>
+              <option value="Beton Kırımı" ${prefType==='beton'?'selected':''}>Beton Test Kırımı Kaydı</option>
+              <option value="Hakediş Metrajı" ${prefType==='hakedis'?'selected':''}>Hakediş Metraj Girişi</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>İşlem / İmalat Detay Açıklaması</label>
+            <textarea id="quickDetailInput" rows="3" placeholder="Örn: C30 beton dökümü yapıldı veya paspayı kontrol edildi..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-action" style="background:var(--steel-700);" onclick="closeModal()">İptal</button>
+          <button class="btn-action" onclick="submitQuickAction()">KAYDET & MSSQL'E İŞLE</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function submitQuickAction() {
+  const type = document.getElementById('quickTypeSelect').value;
+  const detail = document.getElementById('quickDetailInput').value || 'Saha imalat açıklaması kaydedildi.';
+  const now = new Date();
+  const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  
+  const newLog = {
+    time: timeStr, user: 'Engin Soydan (Şantiye Şefi)', type: type, detail: detail, isNew: true
+  };
+
+  try {
+    await fetch(`${API_BASE}/quicklogs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_name: newLog.user, log_type: type, detail: detail, project_id: 'KV-2024' })
+    });
+  } catch(e) {}
+
+  QUICK_LOGS.unshift(newLog);
+  closeModal();
+  selectModule('dashboard');
+}
+
+function openNewProjectModal(){
+  document.getElementById('modalContainer').innerHTML = `
+    <div class="modal-overlay" onclick="closeModal(event)">
+      <div class="modal-box">
+        <div class="modal-header">
+          <span>🏢 YENİ PROJE EKLEME FORMU</span>
+          <span style="cursor:pointer;" onclick="closeModal()">✕</span>
+        </div>
+        <div class="modal-body">
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+            <div class="form-group">
+              <label>Proje Kodu</label>
+              <input id="prjCodeInput" type="text" placeholder="Örn: KR-2024" />
+            </div>
+            <div class="form-group">
+              <label>Proje Adı</label>
+              <input id="prjNameInput" type="text" placeholder="Örn: Kuzey Residence" />
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+            <div class="form-group">
+              <label>İşveren Firma</label>
+              <input id="prjEmpInput" type="text" placeholder="Örn: Doğan İnşaat A.Ş." />
+            </div>
+            <div class="form-group">
+              <label>Sözleşme Bedeli (₺)</label>
+              <input id="prjBudInput" type="text" placeholder="Örn: ₺180.000.000" />
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-action" style="background:var(--steel-700);" onclick="closeModal()">İptal</button>
+          <button class="btn-action" onclick="submitNewProject()">PROJEYİ MSSQL'E EKLE</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function submitNewProject() {
+  const code = document.getElementById('prjCodeInput').value || `PRJ-0${PROJECTS_DATA.length+1}`;
+  const name = document.getElementById('prjNameInput').value || 'Yeni Konut Projesi';
+  const employer = document.getElementById('prjEmpInput').value || 'İşveren Yatırım A.Ş.';
+  const budget = document.getElementById('prjBudInput').value || '₺95.000.000';
+
+  const newPrj = {
+    id: code, name: name, employer: employer, budget: budget, progress: 5, status: 'Yeni Planlandı', date: new Date().toISOString().split('T')[0]
+  };
+
+  try {
+    await fetch(`${API_BASE}/projects`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: code, name: name, employer: employer, budget: parseFloat(budget.replace(/[^0-9]/g, '')) || 95000000, progress_percent: 5, status: 'Yeni Planlandı', start_date: newPrj.date })
+    });
+  } catch(e) {}
+
+  PROJECTS_DATA.unshift(newPrj);
+  closeModal();
+  selectModule('projeler');
+}
+
+function openNewPersonnelModal(){
+  document.getElementById('modalContainer').innerHTML = `
+    <div class="modal-overlay" onclick="closeModal(event)">
+      <div class="modal-box">
+        <div class="modal-header">
+          <span>👷 YENİ PERSONEL VE TEKNİK KADRO EKLEME</span>
+          <span style="cursor:pointer;" onclick="closeModal()">✕</span>
+        </div>
+        <div class="modal-body">
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+            <div class="form-group">
+              <label>Ad Soyad</label>
+              <input id="perNameInput" type="text" placeholder="Örn: Burak Demiröz" />
+            </div>
+            <div class="form-group">
+              <label>Görev / Unvan</label>
+              <select id="perRoleInput">
+                <option>İnşaat Mühendisi</option>
+                <option>Mimar</option>
+                <option>İSG Uzmanı</option>
+                <option>Saha Teknikeri</option>
+                <option>Formen / Usta başı</option>
+                <option>Demirci / Kalıpçı Usta</option>
+                <option>Saha İşçisi</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+            <div class="form-group">
+              <label>Sertifikalar / Yetkinlikler</label>
+              <input id="perCertInput" type="text" placeholder="Örn: Yüksekte Çalışma, A Sınıfı İSG" />
+            </div>
+            <div class="form-group">
+              <label>Görevli Şantiye</label>
+              <select id="perSiteInput">
+                <option>Kent Villaları Konut Projesi</option>
+                <option>Metro Viyadük İnşaatı</option>
+                <option>OSB 2. Etap Tesis</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Puantaj / Vardiya Durumu</label>
+            <select id="perStatusInput">
+              <option>Geldi</option>
+              <option>Vardiyada</option>
+              <option>İzinli</option>
+              <option>Raporlu</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-action" style="background:var(--steel-700);" onclick="closeModal()">İptal</button>
+          <button class="btn-action" onclick="submitNewPersonnel()">PERSONELİ MSSQL'E KAYDET</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function submitNewPersonnel() {
+  const name = document.getElementById('perNameInput').value || 'Burak Demiröz';
+  const role = document.getElementById('perRoleInput').value;
+  const certs = document.getElementById('perCertInput').value || 'Mesleki Yeterlilik Belgesi';
+  const site = document.getElementById('perSiteInput').value;
+  const status = document.getElementById('perStatusInput').value;
+
+  const newPer = { name: name, role: role, certs: certs, site: site, status: status, isNew: true };
+
+  try {
+    await fetch(`${API_BASE}/personnel`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ full_name: name, role: role, certs: certs, assigned_site: site, status: status })
+    });
+  } catch(e) {}
+
+  PERSONNEL_DATA.unshift(newPer);
+  closeModal();
+  selectModule('personel');
+}
+
+function closeModal(e){
+  if(!e || e.target.classList.contains('modal-overlay') || e.target.innerText==='✕' || e.target.innerText==='İptal'){
+    document.getElementById('modalContainer').innerHTML = '';
+  }
+}
+ 
+function buildKPIs(){
+  const kpis = [
+    {label:'Aktif Proje', value:`${PROJECTS_DATA.length}`, sub:'Devam eden', icon:'projects', id:'projeler'},
+    {label:'Şantiye', value:'8', sub:'Devam eden', icon:'site', id:'santiye'},
+    {label:'Toplam Hakediş', value:'₺24,75M', sub:'Onay bekleyen', icon:'progress', id:'hakedis'},
+    {label:'Geciken İşler', value:'5', sub:'İş gecikmede', icon:'gantt', accent:'#C1432B', id:'is-programi'},
+    {label:'Açık Uygunsuzluk', value:'7', sub:'Düzeltme bekleyen', icon:'audit', accent:'#C1432B', id:'denetimler'},
+    {label:'Personel', value:`${81 + PERSONNEL_DATA.length}`, sub:'Toplam personel', icon:'team', accent:'#3F8F5B', id:'personel'},
+  ];
+  document.getElementById('kpiGrid').innerHTML = kpis.map(k=>`
+    <div class="kpi-card" style="--accent:${k.accent||'#FF5A1F'}" onclick="selectModule('${k.id}')">
+      <div class="kpi-eyebrow">${k.label}</div>
+      <div class="kpi-value">${k.value}</div>
+      <div class="kpi-sub">${k.sub}</div>
+    </div>`).join('');
+}
+ 
+function buildDonuts(){
+  new Chart(document.getElementById('progressDonut'), {
+    type:'doughnut',
+    data:{datasets:[{data:[63,25,10,2], backgroundColor:['#FF5A1F','#F0A824','#8C8272','#C1432B'], borderWidth:2, borderColor:'#FDFBF7'}]},
+    options:{cutout:'72%', plugins:{legend:{display:false}, tooltip:{enabled:false}}, animation:{duration:600}}
+  });
+  new Chart(document.getElementById('collectDonut'), {
+    type:'doughnut',
+    data:{datasets:[{data:[57,43], backgroundColor:['#3F8F5B','#E7E1D3'], borderWidth:2, borderColor:'#FDFBF7'}]},
+    options:{cutout:'74%', plugins:{legend:{display:false}, tooltip:{enabled:false}}, animation:{duration:600}}
+  });
+  new Chart(document.getElementById('staffDonut'), {
+    type:'doughnut',
+    data:{datasets:[{data:[12,8,24,38,4], backgroundColor:['#FF5A1F','#F0A824','#3F8F5B','#8C8272','#DCD5C7'], borderWidth:2, borderColor:'#FDFBF7'}]},
+    options:{cutout:'72%', plugins:{legend:{display:false}, tooltip:{enabled:false}}, animation:{duration:600}}
+  });
+}
+ 
+function buildGantt(mode = 'bugun'){
+  const isWeekly = mode === 'haftalik';
+  const activities = isWeekly ? [
+    {label:'Kazı Çalışmaları', start:0,  end:22, color:'#8C8272', week:'Hafta 1 - 2'},
+    {label:'Radye Temel',      start:20, end:45, color:'#3F8F5B', week:'Hafta 2 - 4'},
+    {label:'Perde Duvar',      start:40, end:68, color:'#FF5A1F', week:'Hafta 4 - 6'},
+    {label:'Kolon İmalatı',    start:50, end:78, color:'#FF5A1F', week:'Hafta 5 - 7'},
+    {label:'Kiriş İmalatı',    start:60, end:85, color:'#F0A824', week:'Hafta 6 - 8'},
+    {label:'Döşeme İmalatı',   start:68, end:92, color:'#C1432B', week:'Hafta 7 - 9'},
+    {label:'Tuğla Duvar',      start:40, end:72, color:'#DCD5C7', week:'Hafta 4 - 7'},
+    {label:'Sıva İşleri',      start:72, end:95, color:'#7A6A9A', week:'Hafta 7 - 9'},
+    {label:'Elektrik Tesisatı',start:55, end:92, color:'#3F8F5B', week:'Hafta 5 - 9'},
+    {label:'İç Cephe Boya',    start:85, end:100,color:'#F0A824', week:'Hafta 8 - 10'},
+  ] : [
+    {label:'Kazı Çalışmaları', start:0,  end:16, color:'#8C8272'},
+    {label:'Radye Temel',      start:14, end:38, color:'#3F8F5B'},
+    {label:'Perde Duvar',      start:34, end:60, color:'#FF5A1F'},
+    {label:'Kolon İmalatı',    start:44, end:70, color:'#FF5A1F'},
+    {label:'Kiriş İmalatı',    start:52, end:82, color:'#F0A824'},
+    {label:'Döşeme İmalatı',   start:58, end:82, color:'#C1432B'},
+    {label:'Tuğla Duvar',      start:34, end:66, color:'#DCD5C7'},
+    {label:'Sıva İşleri',      start:62, end:88, color:'#7A6A9A'},
+    {label:'Elektrik Tesisatı',start:48, end:92, color:'#3F8F5B'},
+    {label:'İç Cephe Boya',    start:78, end:100,color:'#F0A824'},
+  ];
+
+  const container = document.getElementById('ganttChart') || document.getElementById('ganttChart2');
+  if(container){
+    container.innerHTML = activities.map(a=>`
+      <div class="gantt-row">
+        <div class="gantt-label">${a.label}</div>
+        <div class="gantt-track">
+          <div class="gantt-bar" style="left:${a.start}%; width:${a.end-a.start}%; background:${a.color};" title="${a.label}"></div>
+        </div>
+      </div>`).join('') + (isWeekly ? 
+        `<div style="display:flex; justify-content:space-between; font-size:9.5px; color:var(--ink-400); margin-top:8px; font-family:'IBM Plex Mono'; font-weight:700;">
+          <span>Hafta 1</span><span>Hafta 3</span><span>Hafta 5</span><span>Hafta 7</span><span>Hafta 10 (Son)</span>
+        </div>` :
+        `<div style="position:relative;height:0;"><div class="today-line" style="left:38%;"></div><div class="today-tag">Bugün</div></div>`);
+  }
+}
+ 
+function buildReports(){
+  const reports = [
+    {date:'15 Mayıs 2024', desc:'Betonarme imalatları devam ediyor.'},
+    {date:'14 Mayıs 2024', desc:'Kolon kalıp imalatları yapıldı.'},
+    {date:'13 Mayıs 2024', desc:'Radye temel betonu döküldü.'},
+    {date:'12 Mayıs 2024', desc:'Kazı çalışmaları tamamlandı.'},
+  ];
+  const el = document.getElementById('reportsList');
+  if(el){
+    el.innerHTML = reports.map(r=>`
+      <div class="report-item">
+        <div class="report-thumb">${ICONS.site}</div>
+        <div>
+          <div class="report-date">${r.date}</div>
+          <div class="report-desc">${r.desc}</div>
+        </div>
+        <div class="check-ok"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9 12l2 2 4-4"/></svg></div>
+      </div>`).join('');
+  }
+}
+ 
+function buildAudits(){
+  const audits = [
+    {title:'İskele Denetimi', date:'15.05.2024', status:'ok'},
+    {title:'Betonarme Denetimi', date:'14.05.2024', status:'fix'},
+    {title:'Elektrik Tesisatı Denetimi', date:'12.05.2024', status:'ok'},
+    {title:'İş Güvenliği Denetimi', date:'10.05.2024', status:'fix'},
+  ];
+  const el = document.getElementById('auditList') || document.getElementById('auditList2');
+  if(el){
+    el.innerHTML = audits.map(a=>`
+      <div class="audit-item">
+        <div class="audit-icon" style="background:${a.status==='ok'?'#E9F5EC':'#FEF3E0'}; color:${a.status==='ok'?'#3F8F5B':'#F0A824'};">${ICONS.audit}</div>
+        <div>
+          <div class="audit-title">${a.title}</div>
+          <div class="audit-date">${a.date}</div>
+        </div>
+        <span class="tag ${a.status==='ok'?'tag-ok':'tag-fix'}" style="margin-left:auto;">${a.status==='ok'?'Uygun':'Düzeltme'}</span>
+      </div>`).join('');
+  }
+}
+ 
+function buildConcreteTable(){
+  const rows = [
+    ['15.05.2024','C25/30','K-125','24.2','32.1'],
+    ['13.05.2024','C25/30','K-124','23.8','31.4'],
+    ['10.05.2024','C25/30','K-123','22.1','30.0'],
+    ['08.05.2024','C30/37','K-122','25.1','33.7'],
+    ['05.05.2024','C30/37','K-121','24.7','32.9'],
+  ];
+  const el = document.getElementById('concreteTable');
+  if(el){
+    el.innerHTML = rows.map(r=>`
+      <tr>
+        <td class="mono-cell">${r[0]}</td>
+        <td>${r[1]}</td>
+        <td class="mono-cell">${r[2]}</td>
+        <td class="mono-cell">${r[3]}</td>
+        <td class="mono-cell">${r[4]}</td>
+        <td><span class="tag tag-ok">Uygun</span></td>
+      </tr>`).join('');
+  }
+}
+ 
+function buildEquipment(targetId = 'equipGrid'){
+  const el = document.getElementById(targetId);
+  if(el){
+    el.innerHTML = EQUIPMENT_DATA.map(e=>`
+      <div class="equip-card" onclick="openEquipmentDetailModal('${e.id}')" title="Detaylar ve Bakım Karnesini Açmak İçin Tıklayın">
+        <div class="equip-icon">${ICONS.equipment}</div>
+        <div class="equip-name">${e.name}</div>
+        <div class="equip-status ${e.ok?'status-run':'status-maint'}">${e.status}</div>
+        <div class="equip-hours">${e.hours} saat | ${e.operator}</div>
+        <div style="font-size:10px; color:var(--orange-600); font-weight:700; margin-top:2px;">🔍 Detaylı İncele</div>
+      </div>`).join('');
+  }
+}
+ 
+syncSQLData().then(() => {
+  renderDashboard();
+});
+</script>
+</body>
+</html>

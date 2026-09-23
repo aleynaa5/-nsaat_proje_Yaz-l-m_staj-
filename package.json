@@ -1,0 +1,19 @@
+{
+  "name": "buildcontrol-pro-vscode",
+  "version": "1.0.0",
+  "description": "BuildControl Pro — MS SQL Server Tam Uyumlu Şantiye Yönetim Projesi",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "msnodesqlv8": "^5.2.3",
+    "mssql": "^11.0.1",
+    "sqlite3": "^5.1.7"
+  }
+}
